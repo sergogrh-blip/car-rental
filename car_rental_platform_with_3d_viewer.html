@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DriveLux — Премиальная аренда автомобилей с 3D просмотром</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darker: '#090d16',
+                        darkcard: '#111827',
+                        accent: '#3b82f6',
+                        accenthover: '#2563eb'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Three.js for 3D Car Viewer -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #090d16; }
+        ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #374151; }
+    </style>
+</head>
+<body class="bg-darker text-gray-100 min-h-screen flex flex-col selection:bg-accent selection:text-white">
+
+    <!-- Header / Navigation -->
+    <header class="sticky top-0 z-40 bg-darker/80 backdrop-blur-md border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-accent to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <i class="fa-solid fa-car-side text-white text-lg"></i>
+                </div>
+                <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent">DriveLux</span>
+            </div>
+            
+            <nav class="hidden md:flex items-center space-x-8 text-sm font-medium text-gray-400">
+                <a href="#catalog" class="hover:text-white transition-colors">Автопарк</a>
+                <a href="#features" class="hover:text-white transition-colors">Преимущества</a>
+                <a href="#contacts" class="hover:text-white transition-colors">Контакты</a>
+            </nav>
+
+            <div class="flex items-center space-x-4">
+                <button onclick="openUserBookings()" class="relative p-2.5 rounded-xl bg-gray-900 border border-gray-800 hover:border-gray-700 text-gray-300 transition-all flex items-center gap-2 text-sm font-medium">
+                    <i class="fa-solid fa-bookmark text-accent"></i>
+                    <span class="hidden sm:inline">Мои брони</span>
+                    <span id="bookingBadge" class="absolute -top-1 -right-1 bg-accent text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold hidden">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section with Search & Filter Bar -->
+    <section class="relative pt-12 pb-20 overflow-hidden border-b border-gray-800/60 bg-gradient-to-b from-darker via-gray-900/40 to-darker">
+        <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-blue-600/10 blur-[120px] rounded-full pointer-events-none"></div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="text-center max-w-3xl mx-auto mb-10">
+                <span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-500/10 text-accent text-xs font-semibold uppercase tracking-wider mb-4 border border-blue-500/20">
+                    <i class="fa-solid fa-cube text-xs"></i> Интерактивный 3D-просмотр авто
+                </span>
+                <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight mb-6 text-white leading-tight">
+                    Аренда элитных машин <span class="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">нового поколения</span>
+                </h1>
+                <p class="text-gray-400 text-lg">Выбирайте авто, оценивайте их в деталях с помощью 3D-модели и бронируйте в два клика.</p>
+            </div>
+
+            <!-- Search & Filter Bar Card -->
+            <div class="bg-darkcard/90 backdrop-blur-xl border border-gray-800/80 rounded-2xl p-4 sm:p-6 shadow-2xl max-w-5xl mx-auto">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400">Город / Локация</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-500">
+                                <i class="fa-solid fa-location-dot"></i>
+                            </span>
+                            <select id="filterLocation" class="w-full bg-gray-900 border border-gray-800 rounded-xl py-3 pl-10 pr-4 text-sm text-gray-200 focus:outline-none focus:border-accent transition-colors">
+                                <option value="">Все локации</option>
+                                <option value="Москва">Москва</option>
+                                <option value="Санкт-Петербург">Санкт-Петербург</option>
+                                <option value="Сочи">Сочи</option>
+                                <option value="Казань">Казань</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400">Категория авто</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-500">
+                                <i class="fa-solid fa-car"></i>
+                            </span>
+                            <select id="filterCategory" class="w-full bg-gray-900 border border-gray-800 rounded-xl py-3 pl-10 pr-4 text-sm text-gray-200 focus:outline-none focus:border-accent transition-colors">
+                                <option value="">Все категории</option>
+                                <option value="Седан">Седан</option>
+                                <option value="Внедорожник">Внедорожник</option>
+                                <option value="Спорткар">Спорткар</option>
+                                <option value="Электрокар">Электрокар</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400">Коробка передач</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-500">
+                                <i class="fa-solid fa-gears"></i>
+                            </span>
+                            <select id="filterTransmission" class="w-full bg-gray-900 border border-gray-800 rounded-xl py-3 pl-10 pr-4 text-sm text-gray-200 focus:outline-none focus:border-accent transition-colors">
+                                <option value="">Любая</option>
+                                <option value="Автомат">Автомат</option>
+                                <option value="Механика">Механика</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex items-end">
+                        <button onclick="applyFilters()" class="w-full bg-accent hover:bg-accenthover text-white font-medium py-3 px-4 rounded-xl transition-all shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 cursor-pointer">
+                            <i class="fa-solid fa-magnifying-glass"></i> Найти авто
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Catalog Section -->
+    <main id="catalog" class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 w-full">
+        <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+            <div>
+                <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-white">Доступный автопарк</h2>
+                <p class="text-gray-400 text-sm mt-1">Нажмите «3D-просмотр», чтобы оценить автомобиль в трехмерном пространстве</p>
+            </div>
+            
+            <div class="flex flex-wrap gap-2" id="tagFilters">
+                <button onclick="filterByTag('')" class="tag-btn px-4 py-2 rounded-xl text-xs font-semibold bg-accent text-white transition-all shadow-sm">Все</button>
+                <button onclick="filterByTag('Седан')" class="tag-btn px-4 py-2 rounded-xl text-xs font-semibold bg-gray-900 border border-gray-800 text-gray-300 hover:border-gray-700 transition-all">Седаны</button>
+                <button onclick="filterByTag('Внедорожник')" class="tag-btn px-4 py-2 rounded-xl text-xs font-semibold bg-gray-900 border border-gray-800 text-gray-300 hover:border-gray-700 transition-all">Внедорожники</button>
+                <button onclick="filterByTag('Спорткар')" class="tag-btn px-4 py-2 rounded-xl text-xs font-semibold bg-gray-900 border border-gray-800 text-gray-300 hover:border-gray-700 transition-all">Спорткары</button>
+                <button onclick="filterByTag('Электрокар')" class="tag-btn px-4 py-2 rounded-xl text-xs font-semibold bg-gray-900 border border-gray-800 text-gray-300 hover:border-gray-700 transition-all">Электрокары</button>
+            </div>
+        </div>
+
+        <!-- Car Grid -->
+        <div id="carGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+        <!-- No Results State -->
+        <div id="noResults" class="hidden text-center py-20">
+            <div class="w-16 h-16 bg-gray-900 rounded-full flex items-center justify-center mx-auto text-gray-500 mb-4 border border-gray-800">
+                <i class="fa-solid fa-car-tunnel text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-white">Автомобили не найдены</h3>
+            <p class="text-gray-400 text-sm mt-1">Попробуйте изменить параметры поиска.</p>
+            <button onclick="resetFilters()" class="mt-4 px-5 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium transition-colors">Сбросить фильтры</button>
+        </div>
+    </main>
+
+    <!-- 3D Viewer Modal -->
+    <div id="viewer3dModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md hidden transition-all">
+        <div class="bg-darkcard border border-gray-800 rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-800 bg-gray-900/50">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-accent flex items-center justify-center">
+                        <i class="fa-solid fa-cube"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-white" id="viewer3dTitle">3D Модель автомобиля</h3>
+                        <p class="text-xs text-gray-400">Крутите мышкой для вращения • Используйте колесико для зума</p>
+                    </div>
+                </div>
+                <button onclick="close3DViewer()" class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Three.js Canvas Container -->
+            <div class="relative w-full h-[400px] sm:h-[480px] bg-gradient-to-b from-gray-950 to-gray-900 cursor-grab active:cursor-grabbing" id="canvasContainer">
+                <div class="absolute bottom-4 left-4 z-10 flex items-center gap-2 bg-gray-900/80 backdrop-blur-md px-4 py-2 rounded-xl border border-gray-800">
+                    <span class="text-xs text-gray-400 font-medium">Цвет кузова:</span>
+                    <button onclick="setCarColor(0xef4444)" class="w-6 h-6 rounded-full bg-red-500 hover:scale-110 transition-transform shadow-md"></button>
+                    <button onclick="setCarColor(0x111827)" class="w-6 h-6 rounded-full bg-gray-900 border border-gray-700 hover:scale-110 transition-transform shadow-md"></button>
+                    <button onclick="setCarColor(0x3b82f6)" class="w-6 h-6 rounded-full bg-blue-500 hover:scale-110 transition-transform shadow-md"></button>
+                    <button onclick="setCarColor(0xe5e7eb)" class="w-6 h-6 rounded-full bg-gray-200 hover:scale-110 transition-transform shadow-md"></button>
+                    <button onclick="setCarColor(0xd97706)" class="w-6 h-6 rounded-full bg-amber-600 hover:scale-110 transition-transform shadow-md"></button>
+                </div>
+            </div>
+
+            <!-- Modal Footer with Action -->
+            <div class="p-6 bg-gray-900/50 border-t border-gray-800 flex items-center justify-between">
+                <div>
+                    <span class="text-xs text-gray-400">Стоимость аренды</span>
+                    <p id="viewer3dPrice" class="text-xl font-bold text-white"></p>
+                </div>
+                <button id="viewerBookBtn" onclick="" class="bg-accent hover:bg-accenthover text-white font-medium py-3 px-6 rounded-xl transition-all shadow-lg shadow-blue-500/25 text-sm cursor-pointer">
+                    Перейти к бронированию
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking Modal -->
+    <div id="bookingModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md hidden transition-all">
+        <div class="bg-darkcard border border-gray-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-800 bg-gray-900/50">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-accent flex items-center justify-center">
+                        <i class="fa-solid fa-calendar-check"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-white" id="modalCarTitle">Бронирование автомобиля</h3>
+                </div>
+                <button onclick="closeBookingModal()" class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+                <div class="flex items-center gap-4 p-4 rounded-xl bg-gray-900 border border-gray-800">
+                    <img id="modalCarImg" src="" alt="Car" class="w-24 h-16 object-cover rounded-lg">
+                    <div>
+                        <h4 id="modalCarName" class="font-bold text-white text-base"></h4>
+                        <p class="text-xs text-gray-400 mt-0.5"><span id="modalCarPrice"></span> ₽ / сутки</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400">Дата получения</label>
+                        <input type="date" id="startDate" onchange="calculateTotal()" class="w-full bg-gray-900 border border-gray-800 rounded-xl py-3 px-4 text-sm text-gray-200 focus:outline-none focus:border-accent">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400">Дата возврата</label>
+                        <input type="date" id="endDate" onchange="calculateTotal()" class="w-full bg-gray-900 border border-gray-800 rounded-xl py-3 px-4 text-sm text-gray-200 focus:outline-none focus:border-accent">
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400">Дополнительные опции</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label class="flex items-center justify-between p-3.5 rounded-xl bg-gray-900 border border-gray-800 cursor-pointer hover:border-gray-700 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" id="optChildSeat" onchange="calculateTotal()" class="w-4 h-4 rounded bg-gray-800 border-gray-700 text-accent">
+                                <span class="text-sm font-medium text-gray-200">Детское кресло</span>
+                            </div>
+                            <span class="text-xs text-gray-400">+500 ₽/д</span>
+                        </label>
+                        <label class="flex items-center justify-between p-3.5 rounded-xl bg-gray-900 border border-gray-800 cursor-pointer hover:border-gray-700 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" id="optInsurance" onchange="calculateTotal()" class="w-4 h-4 rounded bg-gray-800 border-gray-700 text-accent">
+                                <span class="text-sm font-medium text-gray-200">Полное КАСКО</span>
+                            </div>
+                            <span class="text-xs text-gray-400">+1 500 ₽/д</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="space-y-4 pt-2 border-t border-gray-800">
+                    <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-400">Контактные данные</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="space-y-1.5">
+                            <label class="block text-xs text-gray-400">Ваше имя</label>
+                            <input type="text" id="clientName" placeholder="Иван Иванов" class="w-full bg-gray-900 border border-gray-800 rounded-xl py-2.5 px-4 text-sm text-gray-200 focus:outline-none focus:border-accent">
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="block text-xs text-gray-400">Телефон</label>
+                            <input type="tel" id="clientPhone" placeholder="+7 (999) 000-00-00" class="w-full bg-gray-900 border border-gray-800 rounded-xl py-2.5 px-4 text-sm text-gray-200 focus:outline-none focus:border-accent">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4 rounded-xl bg-gray-900/80 border border-gray-800 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-gray-400">Итого к оплате (<span id="daysCount">1</span> дн.)</p>
+                        <p id="totalPrice" class="text-2xl font-bold text-white mt-0.5">0 ₽</p>
+                    </div>
+                    <button onclick="confirmBooking()" class="bg-accent hover:bg-accenthover text-white font-medium py-3 px-6 rounded-xl transition-all shadow-lg shadow-blue-500/25 text-sm cursor-pointer">
+                        Подтвердить заказ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Bookings Modal -->
+    <div id="userBookingsModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md hidden transition-all">
+        <div class="bg-darkcard border border-gray-800 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-800 bg-gray-900/50">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-accent flex items-center justify-center">
+                        <i class="fa-solid fa-bookmark"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-white">Ваши бронирования</h3>
+                </div>
+                <button onclick="closeUserBookings()" class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-6 max-h-[60vh] overflow-y-auto space-y-4" id="bookingsListContainer"></div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 bg-gray-900 border border-gray-800 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3">
+        <div id="toastIcon" class="w-7 h-7 rounded-full bg-green-500/10 text-green-400 flex items-center justify-center text-sm">
+            <i class="fa-solid fa-check"></i>
+        </div>
+        <p id="toastMessage" class="text-sm font-medium"></p>
+    </div>
+
+    <!-- Footer -->
+    <footer id="contacts" class="border-t border-gray-800 bg-darker py-12 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-white font-bold">
+                    <i class="fa-solid fa-car-side"></i>
+                </div>
+                <span class="text-lg font-bold text-white">DriveLux</span>
+            </div>
+            <p class="text-xs text-gray-500">© 2026 DriveLux. Все права защищены. Премиальный сервис проката авто.</p>
+            <div class="flex items-center space-x-6 text-gray-400 text-sm">
+                <a href="#" class="hover:text-white transition-colors"><i class="fa-brands fa-telegram text-lg"></i></a>
+                <a href="#" class="hover:text-white transition-colors"><i class="fa-brands fa-whatsapp text-lg"></i></a>
+                <a href="#" class="hover:text-white transition-colors"><i class="fa-brands fa-instagram text-lg"></i></a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        const carsData = [
+            {
+                id: 1,
+                name: "BMW M4 Competition",
+                category: "Спорткар",
+                location: "Москва",
+                transmission: "Автомат",
+                fuel: "Бензин",
+                seats: 4,
+                price: 25000,
+                image: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=800&q=80"
+            },
+            {
+                id: 2,
+                name: "Mercedes-Benz G-Class",
+                category: "Внедорожник",
+                location: "Москва",
+                transmission: "Автомат",
+                fuel: "Бензин",
+                seats: 5,
+                price: 40000,
+                image: "https://images.unsplash.com/photo-1520050206274-a1ae44613e6d?auto=format&fit=crop&w=800&q=80"
+            },
+            {
+                id: 3,
+                name: "Porsche Taycan 4S",
+                category: "Электрокар",
+                location: "Санкт-Петербург",
+                transmission: "Автомат",
+                fuel: "Электро",
+                seats: 5,
+                price: 32000,
+                image: "https://images.unsplash.com/photo-1614162692292-7ac56d7f7f1e?auto=format&fit=crop&w=800&q=80"
+            },
+            {
+                id: 4,
+                name: "Audi A6 Business",
+                category: "Седан",
+                location: "Москва",
+                transmission: "Автомат",
+                fuel: "Бензин",
+                seats: 5,
+                price: 14000,
+                image: "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?auto=format&fit=crop&w=800&q=80"
+            },
+            {
+                id: 5,
+                name: "Range Rover Sport",
+                category: "Внедорожник",
+                location: "Сочи",
+                transmission: "Автомат",
+                fuel: "Дизель",
+                seats: 5,
+                price: 28000,
+                image: "https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=800&q=80"
+            },
+            {
+                id: 6,
+                name: "Tesla Model Y",
+                category: "Электрокар",
+                location: "Казань",
+                transmission: "Автомат",
+                fuel: "Электро",
+                seats: 5,
+                price: 16000,
+                image: "https://images.unsplash.com/photo-1617788138017-80ad40651399?auto=format&fit=crop&w=800&q=80"
+            }
+        ];
+
+        let selectedCar = null;
+        let activeTag = '';
+        let userBookings = JSON.parse(localStorage.getItem('userBookings') || '[]');
+
+        // Three.js variables
+        let scene, camera, renderer, carMesh, carBodyMaterial, animationId;
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+
+        window.onload = function () {
+            renderCars(carsData);
+            updateBookingBadge();
+            
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 2);
+            
+            document.getElementById('startDate').valueAsDate = today;
+            document.getElementById('endDate').valueAsDate = tomorrow;
+        };
+
+        function renderCars(cars) {
+            const grid = document.getElementById('carGrid');
+            const noResults = document.getElementById('noResults');
+            grid.innerHTML = '';
+
+            if (cars.length === 0) {
+                noResults.classList.remove('hidden');
+                return;
+            } else {
+                noResults.classList.add('hidden');
+            }
+
+            cars.forEach(car => {
+                const card = document.createElement('div');
+                card.className = 'bg-darkcard border border-gray-800 rounded-2xl overflow-hidden hover:border-gray-700 transition-all group flex flex-col shadow-xl';
+                card.innerHTML = `
+                    <div class="relative h-52 overflow-hidden bg-gray-900">
+                        <img src="${car.image}" alt="${car.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.src='https://placehold.co/800x500/111827/3b82f6?text=DriveLux'">
+                        <span class="absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-semibold bg-gray-900/80 backdrop-blur-md text-gray-200 border border-gray-700">
+                            ${car.category}
+                        </span>
+                        <span class="absolute top-3 right-3 px-3.5 py-1.5 rounded-full text-xs font-bold bg-blue-600/90 hover:bg-blue-500 text-white shadow-lg backdrop-blur-md flex items-center gap-1.5 cursor-pointer transition-all" onclick="open3DViewer(${car.id})">
+                            <i class="fa-solid fa-cube"></i> 3D-просмотр
+                        </span>
+                    </div>
+                    <div class="p-6 flex flex-col flex-grow">
+                        <h3 class="text-lg font-bold text-white mb-2">${car.name}</h3>
+                        <div class="flex items-center gap-1.5 text-xs text-gray-400 mb-3"><i class="fa-solid fa-location-dot text-accent"></i> ${car.location}</div>
+                        <div class="grid grid-cols-3 gap-2 py-3 border-y border-gray-800/80 my-1 text-xs text-gray-400">
+                            <div class="flex items-center gap-1.5"><i class="fa-solid fa-gears text-accent"></i> ${car.transmission}</div>
+                            <div class="flex items-center gap-1.5"><i class="fa-solid fa-gas-pump text-accent"></i> ${car.fuel}</div>
+                            <div class="flex items-center gap-1.5"><i class="fa-solid fa-user-group text-accent"></i> ${car.seats} мест</div>
+                        </div>
+                        <div class="flex items-center justify-between mt-auto pt-4">
+                            <div>
+                                <span class="text-xs text-gray-400">Цена за сутки</span>
+                                <div class="text-xl font-extrabold text-white">${car.price.toLocaleString()} ₽</div>
+                            </div>
+                            <button onclick="openBookingModal(${car.id})" class="bg-accent hover:bg-accenthover text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-all shadow-md shadow-blue-500/20 cursor-pointer">
+                                Забронировать
+                            </button>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Three.js 3D Viewer Logic
+        function open3DViewer(carId) {
+            selectedCar = carsData.find(c => c.id === carId);
+            if (!selectedCar) return;
+
+            document.getElementById('viewer3dTitle').textContent = `3D Модель — ${selectedCar.name}`;
+            document.getElementById('viewer3dPrice').textContent = `${selectedCar.price.toLocaleString()} ₽ / сутки`;
+            document.getElementById('viewerBookBtn').setAttribute('onclick', `close3DViewer(); openBookingModal(${selectedCar.id})`);
+            
+            document.getElementById('viewer3dModal').classList.remove('hidden');
+
+            setTimeout(() => {
+                initThreeJS();
+            }, 50);
+        }
+
+        function close3DViewer() {
+            document.getElementById('viewer3dModal').classList.add('hidden');
+            if (animationId) cancelAnimationFrame(animationId);
+            const container = document.getElementById('canvasContainer');
+            const canvas = container.querySelector('canvas');
+            if (canvas) canvas.remove();
+        }
+
+        function initThreeJS() {
+            const container = document.getElementById('canvasContainer');
+            const existingCanvas = container.querySelector('canvas');
+            if (existingCanvas) existingCanvas.remove();
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x090d16);
+
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(6, 3, 6);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+
+            const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight1.position.set(5, 10, 7);
+            scene.add(dirLight1);
+
+            const dirLight2 = new THREE.DirectionalLight(0x3b82f6, 1.5);
+            dirLight2.position.set(-5, -5, -5);
+            scene.add(dirLight2);
+
+            // Create stylized 3D Car group
+            carMesh = new THREE.Group();
+
+            carBodyMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x3b82f6, 
+                metalness: 0.8, 
+                roughness: 0.2 
+            });
+
+            // Car main body
+            const bodyGeo = new THREE.BoxGeometry(3.2, 0.8, 1.5);
+            const body = new THREE.Mesh(bodyGeo, carBodyMaterial);
+            body.position.y = 0.5;
+            carMesh.add(body);
+
+            // Car top cabin
+            const cabinGeo = new THREE.BoxGeometry(1.6, 0.7, 1.3);
+            const cabinMat = new THREE.MeshStandardMaterial({ color: 0x111827, metalness: 0.9, roughness: 0.1 });
+            const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+            cabin.position.set(-0.2, 1.15, 0);
+            carMesh.add(cabin);
+
+            // Wheels
+            const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.3, 32);
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.5 });
+            
+            const wheelPositions = [
+                [-1.1, 0.3, 0.85],
+                [1.1, 0.3, 0.85],
+                [-1.1, 0.3, -0.85],
+                [1.1, 0.3, -0.85]
+            ];
+
+            wheelPositions.forEach(pos => {
+                const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+                wheel.rotation.z = Math.PI / 2;
+                wheel.position.set(...pos);
+                carMesh.add(wheel);
+            });
+
+            scene.add(carMesh);
+
+            // Mouse interaction for rotation
+            const dom = renderer.domElement;
+            dom.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const deltaX = e.clientX - previousMousePosition.x;
+                carMesh.rotation.y += deltaX * 0.008;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mouseup', () => { isDragging = false; });
+
+            // Touch events for mobile
+            dom.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                }
+            });
+
+            window.addEventListener('touchmove', (e) => {
+                if (!isDragging || e.touches.length !== 1) return;
+                const deltaX = e.touches[0].clientX - previousMousePosition.x;
+                carMesh.rotation.y += deltaX * 0.008;
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            });
+
+            window.addEventListener('touchend', () => { isDragging = false; });
+
+            // Zoom via wheel
+            dom.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                camera.position.z += e.deltaY * 0.005;
+                camera.position.z = Math.max(3, Math.min(12, camera.position.z));
+            }, { passive: false });
+
+            animate();
+        }
+
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+            if (!isDragging && carMesh) {
+                carMesh.rotation.y += 0.003; // Gentle auto rotation when idle
+            }
+            renderer.render(scene, camera);
+        }
+
+        function setCarColor(hexColor) {
+            if (carBodyMaterial) {
+                carBodyMaterial.color.setHex(hexColor);
+            }
+        }
+
+        // Filters and Bookings
+        function applyFilters() {
+            const loc = document.getElementById('filterLocation').value;
+            const cat = document.getElementById('filterCategory').value;
+            const trans = document.getElementById('filterTransmission').value;
+
+            const filtered = carsData.filter(car => {
+                return (!loc || car.location === loc) &&
+                       (!cat || car.category === cat) &&
+                       (!trans || car.transmission === trans) &&
+                       (!activeTag || car.category === activeTag);
+            });
+
+            renderCars(filtered);
+        }
+
+        function filterByTag(tag) {
+            activeTag = tag;
+            document.querySelectorAll('.tag-btn').forEach(btn => {
+                if (btn.textContent.includes(tag) || (tag === '' && btn.textContent === 'Все')) {
+                    btn.className = 'tag-btn px-4 py-2 rounded-xl text-xs font-semibold bg-accent text-white transition-all shadow-sm';
+                } else {
+                    btn.className = 'tag-btn px-4 py-2 rounded-xl text-xs font-semibold bg-gray-900 border border-gray-800 text-gray-300 hover:border-gray-700 transition-all';
+                }
+            });
+            applyFilters();
+        }
+
+        function resetFilters() {
+            document.getElementById('filterLocation').value = '';
+            document.getElementById('filterCategory').value = '';
+            document.getElementById('filterTransmission').value = '';
+            filterByTag('');
+        }
+
+        function openBookingModal(carId) {
+            selectedCar = carsData.find(c => c.id === carId);
+            if (!selectedCar) return;
+
+            document.getElementById('modalCarTitle').textContent = `Бронирование ${selectedCar.name}`;
+            document.getElementById('modalCarName').textContent = selectedCar.name;
+            document.getElementById('modalCarPrice').textContent = selectedCar.price.toLocaleString();
+            document.getElementById('modalCarImg').src = selectedCar.image;
+
+            document.getElementById('bookingModal').classList.remove('hidden');
+            calculateTotal();
+        }
+
+        function closeBookingModal() {
+            document.getElementById('bookingModal').classList.add('hidden');
+        }
+
+        function calculateTotal() {
+            if (!selectedCar) return;
+
+            const start = new Date(document.getElementById('startDate').value);
+            const end = new Date(document.getElementById('endDate').value);
+            
+            let diffTime = end - start;
+            let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (isNaN(diffDays) || diffDays <= 0) {
+                diffDays = 1;
+            }
+
+            document.getElementById('daysCount').textContent = diffDays;
+
+            let dailyRate = selectedCar.price;
+            if (document.getElementById('optChildSeat').checked) dailyRate += 500;
+            if (document.getElementById('optInsurance').checked) dailyRate += 1500;
+
+            const total = dailyRate * diffDays;
+            document.getElementById('totalPrice').textContent = total.toLocaleString() + ' ₽';
+        }
+
+        function confirmBooking() {
+            const name = document.getElementById('clientName').value.trim();
+            const phone = document.getElementById('clientPhone').value.trim();
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            if (!name || !phone) {
+                showToast('Пожалуйста, заполните имя и телефон', 'error');
+                return;
+            }
+
+            const booking = {
+                id: Date.now(),
+                carName: selectedCar.name,
+                carImage: selectedCar.image,
+                startDate,
+                endDate,
+                total: document.getElementById('totalPrice').textContent,
+                name,
+                phone
+            };
+
+            userBookings.push(booking);
+            localStorage.setItem('userBookings', JSON.stringify(userBookings));
+            updateBookingBadge();
+
+            closeBookingModal();
+            showToast('Автомобиль успешно забронирован!', 'success');
+        }
+
+        function openUserBookings() {
+            const container = document.getElementById('bookingsListContainer');
+            container.innerHTML = '';
+
+            if (userBookings.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-8 text-sm">У вас пока нет активных бронирований</p>';
+            } else {
+                userBookings.forEach(b => {
+                    const item = document.createElement('div');
+                    item.className = 'p-4 rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-between gap-4';
+                    item.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <img src="${b.carImage}" class="w-16 h-12 object-cover rounded-lg">
+                            <div>
+                                <h4 class="font-bold text-white text-sm">${b.carName}</h4>
+                                <p class="text-xs text-gray-400 mt-0.5">${b.startDate} — ${b.endDate}</p>
+                                <p class="text-xs font-semibold text-accent mt-1">${b.total}</p>
+                            </div>
+                        </div>
+                        <button onclick="cancelBooking(${b.id})" class="text-gray-500 hover:text-red-400 p-2 transition-colors cursor-pointer">
+                            <i class="fa-solid fa-trash-can text-sm"></i>
+                        </button>
+                    `;
+                    container.appendChild(item);
+                });
+            }
+
+            document.getElementById('userBookingsModal').classList.remove('hidden');
+        }
+
+        function closeUserBookings() {
+            document.getElementById('userBookingsModal').classList.add('hidden');
+        }
+
+        function cancelBooking(id) {
+            userBookings = userBookings.filter(b => b.id !== id);
+            localStorage.setItem('userBookings', JSON.stringify(userBookings));
+            updateBookingBadge();
+            openUserBookings();
+            showToast('Бронирование отменено', 'error');
+        }
+
+        function updateBookingBadge() {
+            const badge = document.getElementById('bookingBadge');
+            if (userBookings.length > 0) {
+                badge.textContent = userBookings.length;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const msg = document.getElementById('toastMessage');
+            const icon = document.getElementById('toastIcon');
+
+            msg.textContent = message;
+            if (type === 'success') {
+                icon.className = 'w-7 h-7 rounded-full bg-green-500/10 text-green-400 flex items-center justify-center text-sm';
+                icon.innerHTML = '<i class="fa-solid fa-check"></i>';
+            } else {
+                icon.className = 'w-7 h-7 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center text-sm';
+                icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+            }
+
+            toast.classList.remove('translate-y-24', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-24', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
